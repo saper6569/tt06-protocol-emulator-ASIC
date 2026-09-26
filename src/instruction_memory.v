@@ -20,5 +20,4 @@ module instruction_memory #(
             data <= memory[addr];
         end
     end
-
 endmodule
