@@ -33,7 +33,7 @@ module io_port #(
             write_en = 0  release line / high-impedance state for read
             */
 
-            always begin
+            always @* begin
                 if (!write_en) begin
                     // Not writing: release the pin
                     gpio[i] = 1'bz;
