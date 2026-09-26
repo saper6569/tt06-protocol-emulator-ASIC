@@ -1,0 +1,16 @@
+SIM ?= icarus
+TOPLEVEL_LANG ?= verilog
+UNIT ?= instruction_memory
+
+SRC_DIR := $(abspath ../src)
+VERILOG_SOURCES := $(SRC_DIR)/$(UNIT).v
+SIM_BUILD := sim_build/units/$(UNIT)
+TOPLEVEL := $(UNIT)
+COCOTB_TEST_MODULES := test_units
+COMPILE_ARGS += -g2012
+
+.PHONY: test-all
+test-all:
+	$(MAKE) -f Makefile.units UNIT= #put the file name here, dont include .v, use the same name in tb
+
+include $(shell cocotb-config --makefiles)/Makefile.sim

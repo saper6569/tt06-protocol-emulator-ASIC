@@ -16,6 +16,18 @@ To run the RTL simulation:
 make -B
 ```
 
+To run the standalone Cocotb tests for the individual CPU building blocks:
+
+```sh
+make -f Makefile.units test-all
+```
+
+To run just one module, set `UNIT` to module name:
+
+```sh
+make -f Makefile.units UNIT=register
+```
+
 To run gatelevel simulation, first harden your project and copy `../runs/wokwi/results/final/verilog/gl/{your_module_name}.v` to `gate_level_netlist.v`.
 
 Then run:
