@@ -4,14 +4,14 @@ module instruction_memory #(
 )(
     input wire clk,
     input wire w_en,
+
     input wire [DATA_WIDTH-1:0] data_in,
     input wire [ADDR_WIDTH-1:0] addr,
+
     output reg [DATA_WIDTH-1:0] data
 );
-
     reg [DATA_WIDTH-1:0] memory [0:(1 << ADDR_WIDTH)-1];
-
-    // Synchronous read/write SRAM
+    // Synchronous read/write memory
     always @(posedge clk) begin
         if (w_en) begin
             memory[addr] <= data_in;

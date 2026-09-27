@@ -24,4 +24,49 @@ module tt_um_example (
   // List all unused inputs to prevent warnings
   wire _unused = &{ena, clk, rst_n, 1'b0};
 
+
+
+
+  // Interface controls & inputs
+  wire program_data;
+  wire program_en;
+
+  // Interconnect wires between programmer and instruction_memory
+  wire [7:0] program_address;
+  wire [7:0] program_instruction;
+  wire program_write_en;
+
+  // Memory read output
+  wire [7:0] instruction_data;
+
+  programmer #(
+      .INSTRUCTION_WIDTH(8),
+      .ADDRESS_WIDTH(8)
+  ) programmer_inst (
+      .clk(clk),
+      .rst_n(rst_n),
+
+      .program_data(program_data),
+      .program_en(program_en),
+
+      .address_out(program_address),
+      .instruction_out(program_instruction),
+
+      .write_en(program_write_en)
+  );
+
+
+  instruction_memory #(
+      .ADDR_WIDTH(8),
+      .DATA_WIDTH(8)
+  ) instruction_memory_inst (
+      .clk(clk),
+
+      .w_en(program_write_en),
+      .data_in(program_instruction),
+      .addr(program_address),
+
+      .data(instruction_data)
+  );
+    
 endmodule

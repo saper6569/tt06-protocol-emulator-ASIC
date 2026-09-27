@@ -6,7 +6,8 @@ module processor #(
     parameter MEMORY_ADDR_WIDTH = 8,
     parameter MEMORY_SIZE = 1 << MEMORY_ADDR_WIDTH,
     parameter SHIFT_REG_WIDTH = 8,
-    parameter 
+    parameter INSTRUCTION_WIDTH = 8,
+    parameter
 ) 
 (
     // Input
@@ -25,3 +26,4 @@ module processor #(
     output wire [SHIFT_REG_WIDTH-1:0] shift_reg_out,
     output wire [MEMORY_ADDR_WIDTH-1:0] mem_addr_out
 );
+    
