@@ -1,26 +1,29 @@
-module fifo (
-  input logic	clk,
-  input logic	rst_n,
+module fifo #(
+    parameter WIDTH = 8,
+    parameter SIZE = 4
+    )(
+  input wire clk,
+  input wire rst_n,
 
-  input logic	push,
-  input logic	pop,
+  input wire push,
+  input wire pop,
 
-  input logic	[7:0] data_in,
-  output logic	[7:0] data_out,
+  input  wire 	[WIDTH-1:0] data_in,
+  output wire [WIDTH-1:0] data_out,
 
-  output logic	full,
-  output logic	empty
+  output wire full,
+  output wire empty
  );
 
-	logic	[7:0] mem [0:3];
+	reg     [WIDTH-1:0] mem [0:SIZE-1];
 	
-	logic 	[1:0] write_ptr;
-	logic	[1:0] read_ptr;
+	reg     [$clog2(SIZE) - 1:0] write_ptr;
+	reg     [$clog2(SIZE) - 1:0] read_ptr;
 
-	logic	[2:0] count;
+	reg     [$clog2(SIZE+1)-1:0] count;
 
-	assign	empty = (count == 3'd0);
-	assign	full   = (count == 3'd3);
+	assign	empty = (count == 0);
+	assign	full   = (count == SIZE);
 
 	assign data_out = mem[read_ptr];
 
@@ -33,7 +36,7 @@ module fifo (
 			//push
 			if(push && !full) begin
 				mem[write_ptr] <= data_in;
-				write_ptr <= write_ptr + 1'b1;
+				write_ptr <= write_ptr +1'b1;
 			end
 			//pop
 			if(pop && !empty) begin
