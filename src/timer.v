@@ -30,3 +30,4 @@ module timer #(
     // Done is high only when count reaches 0 and we aren't actively starting/reloading
     assign done = (count == 0) && !start;
 endmodule
+
