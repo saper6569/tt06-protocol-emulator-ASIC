@@ -1,31 +1,32 @@
-// One-shot down counter for the WAIT N instruction.
-// Pulse `start` for one cycle with N on `wait_cycles`; `done` goes high
-// N+1 cycles later (WAIT 0 = 1 cycle). Holding `start` high keeps
-// reloading, so `done` never rises. Synchronous active-low reset.
+/**
+ * 
+ * A parameterizable countdown timer that loads a specified number of wait 
+ * cycles upon an active-high start signal and asserts a 'done' pulse once 
+ * the countdown completes.
+ */
+
 module timer #(
-    parameter MAX_WAIT = 63,
-    parameter k = $clog2(MAX_WAIT + 1)
+    parameter WIDTH = 16
 )(
     input wire clk,
     input wire rst_n,
     input wire start, // Active-high start signal
-    input wire [k-1:0] wait_cycles, // Number of clock cycles to wait
+    input wire [$clog2(WIDTH)-1:0] wait_cycles, // Number of clock cycles to wait
     output wire done //timer output
 );
 
-    reg [k-1:0] count;
+    reg [$clog2(WIDTH)-1:0] count;
     always @(posedge clk) begin
         if(!rst_n) begin
-            count <= 0;    //resets the timer if reset is pressed
+            count <= 0;    // Resets the timer
         end
-        else if(start) begin //if start is high
-            count <= wait_cycles; //sets the count to wait the imputted amount of cycles
+        else if(start) begin 
+            count <= wait_cycles; // Loads the wait cycles
         end
         else if(count != 0) begin
-            count <= count - 1'b1; 
+            count <= count - 1'b1; // Decrements count down to 0
         end
     end
-    //!start because in start cycle, count holds 0 until clk edge
-    //which would skip wait
-    assign done = (count == 0) && !start; 
+    // Done is high only when count reaches 0 and we aren't actively starting/reloading
+    assign done = (count == 0) && !start;
 endmodule
