@@ -1,33 +1,33 @@
-// set curr count = 0 decrease by 1 every cycle
-// when curr count == 0 set flag bit then copy  total count into curr count
-//required procesor to set total count and enable counting
-// flag signals processor to move onto next instruction
+/**
+ * 
+ * A parameterizable countdown timer that loads a specified number of wait 
+ * cycles upon an active-high start signal and asserts a 'done' pulse once 
+ * the countdown completes.
+ */
 
 module timer #(
-    parameter WIDTH = 32
-)
-(
-    input clk,
-    input rst_n,
-    input [WIDTH-1:0] total_count,
-    input wire count_enable,
-    output reg flag
+    parameter WIDTH = 16
+)(
+    input wire clk,
+    input wire rst_n,
+    input wire start, // Active-high start signal
+    input wire [$clog2(WIDTH)-1:0] wait_cycles, // Number of clock cycles to wait
+    output wire done //timer output
 );
-    reg [WIDTH-1:0] curr_count;
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            curr_count <= {WIDTH{1'b0}};
-            flag <= 1'b0;
-        end else begin
-            if (count_enable) begin
-                if (curr_count == {WIDTH{1'b0}}) begin
-                    flag <= 1'b1; // Set flag when count reaches zero
-                    curr_count <= total_count; // Reload total count
-                end else begin
-                    curr_count <= curr_count - 1; // Decrease count
-                    flag <= 1'b0; // Clear flag when counting down
-                end
-            end 
+    reg [$clog2(WIDTH)-1:0] count;
+    always @(posedge clk) begin
+        if(!rst_n) begin
+            count <= 0;    // Resets the timer
+        end
+        else if(start) begin 
+            count <= wait_cycles; // Loads the wait cycles
+        end
+        else if(count != 0) begin
+            count <= count - 1'b1; // Decrements count down to 0
         end
     end
+    // Done is high only when count reaches 0 and we aren't actively starting/reloading
+    assign done = (count == 0) && !start;
+endmodule
+
