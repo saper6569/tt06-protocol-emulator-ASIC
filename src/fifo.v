@@ -56,6 +56,5 @@ module fifo #(
 				default: count <= count;
 			endcase
 		end
-        $display("EDGE: push=%B full=%b count=%d", push, full, count);
 	end
 endmodule
