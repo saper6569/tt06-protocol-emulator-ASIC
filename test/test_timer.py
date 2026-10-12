@@ -27,6 +27,7 @@ async def cycles_until_done(dut, k):
         await ReadOnly()
         cycles += 1
     return cycles
+
     
 @cocotb.test()
 async def test_reset(dut):
@@ -41,3 +42,13 @@ async def test_wait_timing(dut):
     for k in [0,1, 3, 63, 1000]:
         cycles = await cycles_until_done(dut, k)
         assert cycles == k+1, f"WAIT({k}): done after {cycles} cycles, expect {k+1}"
+        
+@cocotb.test()
+async def test_stays_done(dut):
+    cocotb.start_soon(Clock(dut.clk, 10, unit ="ns").start())
+    await reset(dut)
+    await cycles_until_done(dut, 3)
+    for i in range(5):
+        await FallingEdge(dut.clk)
+        await ReadOnly()
+        assert dut.done.value == 1, f"done dropped {i + 1} cycles after wait if finished"
