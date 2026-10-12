@@ -11,11 +11,11 @@ module timer #(
     input wire clk,
     input wire rst_n,
     input wire start, // Active-high start signal
-    input wire [$clog2(WIDTH)-1:0] wait_cycles, // Number of clock cycles to wait
+    input wire [WIDTH-1:0] wait_cycles, // Number of clock cycles to wait
     output wire done //timer output
 );
 
-    reg [$clog2(WIDTH)-1:0] count;
+    reg [WIDTH-1:0] count;
     always @(posedge clk) begin
         if(!rst_n) begin
             count <= 0;    // Resets the timer
@@ -30,4 +30,3 @@ module timer #(
     // Done is high only when count reaches 0 and we aren't actively starting/reloading
     assign done = (count == 0) && !start;
 endmodule
-
