@@ -1,0 +1,12 @@
+Architecture:
+
+    -Bit-cell Array
+    -AddressDecoder
+    -Word-Line Driver
+    -Column-Mux
+    -Bit-Line Precharge
+    -Sense Amplifier
+    -Write Driver
+    -Control Logic
+
+

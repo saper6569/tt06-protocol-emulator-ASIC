@@ -20,7 +20,7 @@ module fifo #(
 	reg     [$clog2(SIZE) - 1:0] write_ptr;
 	reg     [$clog2(SIZE) - 1:0] read_ptr;
 
-	reg     [$clog2(SIZE+1)-1:0] count;
+	reg     [$clog2(SIZE+1) - 1:0] count;
 
 	assign	empty = (count == 0);
 	assign	full   = (count == SIZE);
@@ -32,11 +32,12 @@ module fifo #(
 			write_ptr <= 0;
 			read_ptr  <= 0;
 			count	  <= 0;
-		end else begin
+		end
+        else begin
 			//push
 			if(push && !full) begin
 				mem[write_ptr] <= data_in;
-				write_ptr <= write_ptr +1'b1;
+				write_ptr <= write_ptr +1;
 			end
 			//pop
 			if(pop && !empty) begin
@@ -55,5 +56,6 @@ module fifo #(
 				default: count <= count;
 			endcase
 		end
+        $display("EDGE: push=%B full=%b count=%d", push, full, count);
 	end
 endmodule
