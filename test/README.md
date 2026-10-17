@@ -28,6 +28,12 @@ To run just one module, set `UNIT` to module name:
 make -f Makefile.units UNIT=register
 ```
 
+This includes the GPIO tri-state and open-drain testbench:
+
+```sh
+make -f Makefile.units UNIT=io_port
+```
+
 To run gatelevel simulation, first harden your project and copy `../runs/wokwi/results/final/verilog/gl/{your_module_name}.v` to `gate_level_netlist.v`.
 
 Then run:

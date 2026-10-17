@@ -67,16 +67,17 @@ module tt_um_example (
 
         .data(instruction_data)
     );
-
-    io_port #(
-        .IO_PORTS(IO_PORTS)
-    ) io_inst (
-        .clk(clk),
-        .rst_n(rst_n),
-        .write_en(gpio_write_en),
-        .gpio_out(gpio_out),
-        .gpio_in(gpio_in),
-        .gpio_mode(gpio_mode)
-    );
     
+    io_port #(
+        .GPIO_WIDTH(8)
+    ) gpio_inst (
+        .gpio_out(gpio_out_reg),
+        .write_en(gpio_enable_reg),
+        .gpio_mode(gpio_mode_reg),
+
+        .gpio_in(uio_in),
+        .gpio_pad_out(uio_out),
+        .gpio_pad_oe(uio_oe)
+    );
+
 endmodule
