@@ -19,7 +19,8 @@ struct Instruction{
     std::vector<Operand> operands;
     int address;
 };
-void splitLine(vector
+
+Instruction parseInstruction(const std::string& line);
 
         
     
@@ -57,4 +58,32 @@ int main(int argc, char * argv[]) {
         std::cout << line;
     }
 
+}
+Instruction parseInstruction(const std::string& line){ 
+	Instruction inst;
+	std::istringstream iss(line);
+
+	iss >> inst.mnemonic;
+	
+	std::string remaining;
+	std::getline(iss, remaining);
+
+	std::istring operandStream(remaining);
+	std::string operand;
+
+	while(std::getline(operandString, operand, ','){
+		size_t start = operand.find_first_not_of(" \t");
+
+		if(start == std::string::npos){
+			continue;
+		}
+
+		operand.erase(0, start);
+
+		size_t end = operand.find_last_not_of(" /t");
+		operand.erase(end + 1);
+
+		inst.operands.push_back(operand);
+	}
+	return inst;
 }
