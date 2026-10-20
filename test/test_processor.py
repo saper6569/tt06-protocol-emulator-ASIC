@@ -112,3 +112,50 @@ async def test_bit_set_writes_gpio_mode_after_timer_bits(dut):
 
     await issue_instruction(dut, bit_set_instruction(16, 0))
     assert int(dut.gpio_mode.value) == 0
+
+
+@cocotb.test()
+async def test_programming_mode_pauses_wait_instruction(dut):
+    await reset(dut)
+
+    dut.gpio_in.value = 0x04
+    await issue_instruction(dut, 0x04)  # Wait for GPIO[2] to become low.
+    assert int(dut.state.value) == 2
+    assert int(dut.PC.value) == 1
+
+    dut.programming_mode.value = 1
+    dut.gpio_in.value = 0
+    for _ in range(5):
+        await step(dut)
+        assert int(dut.state.value) == 2
+        assert int(dut.PC.value) == 1
+        assert int(dut.setup_complete.value) == 1
+
+    dut.programming_mode.value = 0
+    await step(dut)
+    assert int(dut.state.value) == 0
+    assert int(dut.PC.value) == 1
+
+
+@cocotb.test()
+async def test_programming_mode_pauses_timer_countdown(dut):
+    await reset(dut)
+    dut.timer_wait_cycles.value = 5
+    await issue_instruction(dut, 0x3F)
+    await step(dut)  # Start timer.
+    assert int(dut.timer_inst.count.value) == 5
+
+    dut.programming_mode.value = 1
+    for _ in range(3):
+        await step(dut)
+    assert int(dut.timer_inst.count.value) == 5
+    assert int(dut.state.value) == 2
+    assert int(dut.PC.value) == 1
+
+    dut.programming_mode.value = 0
+    for _ in range(8):
+        await step(dut)
+        if int(dut.state.value) == 0:
+            break
+    assert int(dut.state.value) == 0
+    assert int(dut.PC.value) == 1

@@ -10,6 +10,7 @@ module timer #(
 )(
     input wire clk,
     input wire rst_n,
+    input wire enable,
     input wire start, // Active-high start signal
     input wire [WIDTH-1:0] wait_cycles, // Number of clock cycles to wait
     output wire done //timer output
@@ -20,10 +21,10 @@ module timer #(
         if(!rst_n) begin
             count <= 0;    // Resets the timer
         end
-        else if(start) begin 
+        else if (enable && start) begin
             count <= wait_cycles; // Loads the wait cycles
         end
-        else if(count != 0) begin
+        else if (enable && count != 0) begin
             count <= count - 1'b1; // Decrements count down to 0
         end
     end

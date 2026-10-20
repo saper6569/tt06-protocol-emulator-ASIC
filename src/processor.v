@@ -69,6 +69,7 @@ module processor #(
     ) timer_inst (
         .clk(clk),
         .rst_n(rst_n),
+        .enable(!programming_mode),
         .start(start_timer),
         .wait_cycles(timer_wait_cycles),
         .done(timer_done)
@@ -90,7 +91,7 @@ module processor #(
             gpio_write_en <= {IO_PORTS{1'b0}};
             gpio_out <= {IO_PORTS{1'b0}};
         end
-        else begin
+        else if (!programming_mode) begin
             start_timer <= 1'b0;
 
             // Fetch request, capture the synchronous memory result, then execute.

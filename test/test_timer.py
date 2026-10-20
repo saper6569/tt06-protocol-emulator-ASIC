@@ -4,6 +4,7 @@ from cocotb.triggers import FallingEdge, ReadOnly
 
 async def reset(dut):
     dut.rst_n.value = 0
+    dut.enable.value = 1
     dut.start.value = 0
     dut.wait_cycles.value = 0
     await FallingEdge(dut.clk)
