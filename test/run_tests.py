@@ -25,4 +25,6 @@ runner.build(
     always=True,
     timescale=("1ns", "1ps"),  # without this, Icarus can't represent a 10 ns clock
 )
-runner.test(hdl_toplevel=unit, test_module=f"test_{unit}", test_dir=test_dir)
+# Runs test_<unit>.py plus any test_<unit>_*.py (e.g. test_processor_spi.py).
+test_modules = sorted(p.stem for p in test_dir.glob(f"test_{unit}*.py"))
+runner.test(hdl_toplevel=unit, test_module=test_modules, test_dir=test_dir)
