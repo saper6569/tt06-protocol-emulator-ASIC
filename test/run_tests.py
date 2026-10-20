@@ -16,10 +16,15 @@ unit, *deps = sys.argv[1:]
 test_dir = Path(__file__).parent
 src_dir = test_dir.parent / "src"
 
+# Files whose module name differs from the file name. Tiny Tapeout requires the
+# top-level module to be named tt_um_<something>, independent of the file name.
+MODULE_NAME_BY_FILE = {"tt_um_": "tt_um_example"}
+toplevel = MODULE_NAME_BY_FILE.get(unit, unit)
+
 runner = get_runner("icarus")
 runner.build(
     sources=[src_dir / f"{name}.v" for name in [unit, *deps]],
-    hdl_toplevel=unit,
+    hdl_toplevel=toplevel,
     build_args=["-g2012"],
     build_dir=test_dir / "sim_build" / unit,
     always=True,
@@ -27,4 +32,4 @@ runner.build(
 )
 # Runs test_<unit>.py plus any test_<unit>_*.py (e.g. test_processor_spi.py).
 test_modules = sorted(p.stem for p in test_dir.glob(f"test_{unit}*.py"))
-runner.test(hdl_toplevel=unit, test_module=test_modules, test_dir=test_dir)
+runner.test(hdl_toplevel=toplevel, test_module=test_modules, test_dir=test_dir)
