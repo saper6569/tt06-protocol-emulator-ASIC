@@ -19,6 +19,7 @@ struct Instruction{
     std::vector<Operand> operands;
     int address;
 };
+void splitLine(vector
 
         
     
@@ -45,6 +46,15 @@ int main(int argc, char * argv[]) {
     if(!file.is_open()) {
         std::cerr << "Could not open file:" << argv[1] << "\n";
         return 1;
+    }
+
+    std::string line;
+    std::vector<Instruction> Instructions;
+    while (std::getline(file, line)) {
+        Instruction currInstr;
+        
+        
+        std::cout << line;
     }
 
 }
