@@ -16,16 +16,17 @@ To run the RTL simulation:
 make -B
 ```
 
-To run the standalone Cocotb tests for the individual CPU building blocks:
+To run a standalone Cocotb test for a CPU building block:
 
 ```sh
-make -f Makefile.units test-all
+make -f Makefile.units UNIT=processor
 ```
 
-To run just one module, set `UNIT` to module name:
+Other tested units include `timer`, `programmer`, `io_port`, `fifo`, and
+`flip_flop`. Select one by setting `UNIT` to its module name, for example:
 
 ```sh
-make -f Makefile.units UNIT=register
+make -f Makefile.units UNIT=io_port
 ```
 
 This includes the GPIO tri-state and open-drain testbench:
