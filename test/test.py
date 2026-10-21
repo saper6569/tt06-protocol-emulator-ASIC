@@ -20,10 +20,10 @@ async def test_serial_program_and_run(dut):
     await RisingEdge(dut.clk)
     assert int(dut.uo_out.value) == 0
 
-    # Program address 0 with a wait-for-low instruction on GPIO 0.
-    word = 0x0000
+    # Program address 0 with wait-for-low on GPIO 0 (instruction value 1).
+    word = 0x0001
     dut.ui_in.value = 0x80
-    for bit in range(15, -1, -1):
+    for bit in range(13, -1, -1):
         dut.ui_in.value = 0x80 | ((word >> bit) & 1) << 6
         await RisingEdge(dut.clk)
     dut.ui_in.value = 0

@@ -1,11 +1,11 @@
 module programmer #(
-    parameter INSTRUCTION_WIDTH = 8,
+    parameter INSTRUCTION_WIDTH = 6,
     parameter ADDRESS_WIDTH = 8
 )(
     input wire clk,
     input wire rst_n,
 
-    // 2-wire programming interface
+    // Serially receives the address followed by a 6-bit instruction, MSB first.
     input wire program_data,
     input wire program_en,
 

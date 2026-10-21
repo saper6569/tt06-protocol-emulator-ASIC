@@ -15,19 +15,20 @@ module tt_um_example (
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
 );
+    localparam INSTRUCTION_WIDTH = 6;
 
     // ui_in[7:6] form a serial programming interface. Hold ui_in[7] high
-    // while clocking one address+instruction word, MSB first, on ui_in[6].
+    // while clocking one 8-bit address and 6-bit instruction, MSB first, on ui_in[6].
     // ui_in[5] must be high to run the processor.
     wire program_en = ui_in[7];
     wire program_data = ui_in[6];
     reg previous_program_en;
 
     wire [7:0] program_address;
-    wire [7:0] program_instruction;
+    wire [INSTRUCTION_WIDTH-1:0] program_instruction;
     wire program_write_en;
     wire [7:0] processor_address;
-    wire [7:0] instruction_data;
+    wire [INSTRUCTION_WIDTH-1:0] instruction_data;
     wire [7:0] memory_address =
         program_write_en ? program_address : processor_address;
     wire programming_mode =
@@ -45,7 +46,7 @@ module tt_um_example (
     end
 
     programmer #(
-        .INSTRUCTION_WIDTH(8),
+        .INSTRUCTION_WIDTH(INSTRUCTION_WIDTH),
         .ADDRESS_WIDTH(8)
     ) programmer_inst (
         .clk(clk),
@@ -59,7 +60,7 @@ module tt_um_example (
 
     instruction_memory #(
         .ADDR_WIDTH(8),
-        .DATA_WIDTH(8)
+        .INSTRUCTION_WIDTH(INSTRUCTION_WIDTH)
     ) instruction_memory_inst (
         .clk(clk),
         .w_en(program_write_en),
@@ -68,7 +69,9 @@ module tt_um_example (
         .data(instruction_data)
     );
 
-    processor processor_inst (
+    processor #(
+        .INSTRUCTION_WIDTH(INSTRUCTION_WIDTH)
+    ) processor_inst (
         .clk(clk),
         .rst_n(rst_n),
         .programming_mode(programming_mode),
