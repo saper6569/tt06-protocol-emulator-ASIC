@@ -1,4 +1,5 @@
-# Tiny Tapeout project information project:
+# Tiny Tapeout project information
+project:
   title:        "Protocol Emulator"
   author:       "Sanija, Aiden, Aaron"
   discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
