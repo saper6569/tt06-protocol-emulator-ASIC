@@ -1,33 +1,60 @@
 /**
- * 
- * A parameterizable countdown timer that loads a specified number of wait 
- * cycles upon an active-high start signal and asserts a 'done' pulse once 
- * the countdown completes.
+ * Countdown timer with a clock-enable prescaler.
+ *
+ * Resolution/minimum nonzero wait: TICK_CYCLES * CLK_PERIOD_NS ns.
+ * Maximum wait: (2^COUNTER_BITS - 1) * TICK_CYCLES * CLK_PERIOD_NS ns.
+ * Counter bit b represents 2^b * TICK_CYCLES * CLK_PERIOD_NS ns.
  */
-
 module timer #(
-    parameter WIDTH = 16
+    parameter COUNTER_BITS = 11,
+    parameter CLK_PERIOD_NS = 20,
+    parameter TICK_CYCLES = 1
 )(
     input wire clk,
     input wire rst_n,
     input wire enable,
-    input wire start, // Active-high start signal
-    input wire [WIDTH-1:0] wait_cycles, // Number of clock cycles to wait
-    output wire done //timer output
+    input wire start,
+    input wire [COUNTER_BITS-1:0] wait_cycles,
+    output wire done
 );
+    localparam PRESCALER_WIDTH =
+        (TICK_CYCLES > 1) ? $clog2(TICK_CYCLES) : 1;
 
-    reg [WIDTH-1:0] count;
-    always @(posedge clk) begin
-        if(!rst_n) begin
-            count <= 0;    // Resets the timer
-        end
-        else if (enable && start) begin
-            count <= wait_cycles; // Loads the wait cycles
-        end
-        else if (enable && count != 0) begin
-            count <= count - 1'b1; // Decrements count down to 0
+    reg [COUNTER_BITS-1:0] count;
+    reg [PRESCALER_WIDTH-1:0] prescaler;
+    wire tick = TICK_CYCLES == 1 ||
+                prescaler == TICK_CYCLES - 1;
+
+    initial begin
+        if (COUNTER_BITS < 1 || CLK_PERIOD_NS < 1 || TICK_CYCLES < 1) begin
+            $fatal(1, "timer parameters must be positive");
         end
     end
-    // Done is high only when count reaches 0 and we aren't actively starting/reloading
+
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            count <= {COUNTER_BITS{1'b0}};
+            prescaler <= {PRESCALER_WIDTH{1'b0}};
+        end
+        else if (enable && start) begin
+            count <= wait_cycles;
+            prescaler <= {PRESCALER_WIDTH{1'b0}};
+        end
+        else if (enable) begin
+            if (count != 0) begin
+                if (tick) begin
+                    count <= count - 1'b1;
+                    prescaler <= {PRESCALER_WIDTH{1'b0}};
+                end
+                else begin
+                    prescaler <= prescaler + 1'b1;
+                end
+            end
+            else begin
+                prescaler <= {PRESCALER_WIDTH{1'b0}};
+            end
+        end
+    end
+
     assign done = (count == 0) && !start;
 endmodule

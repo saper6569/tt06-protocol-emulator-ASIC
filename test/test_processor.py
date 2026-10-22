@@ -14,7 +14,7 @@ async def reset(dut):
     dut.mem_data_in.value = 0
     dut.gpio_in.value = 0
 
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 20, unit="ns").start())
     await step(dut)
     await step(dut)
     dut.rst_n.value = 1
@@ -28,35 +28,92 @@ async def issue_instruction(dut, instruction):
     await step(dut)  # Execute instruction
 
 
-@cocotb.test()
-async def test_shift_io_and_constant_sources(dut):
-    await reset(dut)
-
-    await issue_instruction(dut, 58)  # Shift 1 into the register.
-    await issue_instruction(dut, 17)  # Shift register bit to IO0.
-    assert int(dut.gpio_out.value) & 1 == 1
-    assert int(dut.gpio_write_en.value) & 1 == 1
-
-    await issue_instruction(dut, 59)  # Shift 0 into the register.
-    await issue_instruction(dut, 17)
-    assert int(dut.gpio_out.value) & 1 == 0
-
-    dut.gpio_in.value = 0x02
-    await issue_instruction(dut, 26)  # Shift IO1 into the register.
-    await issue_instruction(dut, 19)  # Shift the bit to IO2.
-    assert int(dut.gpio_out.value) & 0x04 == 0x04
+async def wait_for_fetch(dut, limit=40):
+    for _ in range(limit):
+        if int(dut.state.value) == 0:
+            return
+        await step(dut)
+    assert int(dut.state.value) == 0, "instruction did not complete"
 
 
 @cocotb.test()
-async def test_wait_instructions_and_timer_counter(dut):
+async def test_all_instruction_range_boundaries(dut):
     await reset(dut)
 
-    # Toggle timer counter bits 0 and 4 to configure a wait of 17 cycles.
-    await issue_instruction(dut, 41)
-    await issue_instruction(dut, 45)
+    # 0: wait timer.
+    await issue_instruction(dut, 0)
+    await wait_for_fetch(dut)
+    assert int(dut.PC.value) == 1
+
+    # 1 and 4: first and last wait-for IO values (default level is low).
+    for instruction, io_index in ((1, 0), (4, 3)):
+        dut.gpio_in.value = 1 << io_index
+        await issue_instruction(dut, instruction)
+        assert int(dut.setup_complete.value) == 1
+        dut.gpio_in.value = 0
+        await step(dut)
+        assert int(dut.state.value) == 0
+
+    # 5 and 8: first and last shift output values.
+    await issue_instruction(dut, 26)  # Shift 1 into the register.
+    await issue_instruction(dut, 5)
+    assert int(dut.gpio_out.value) & 0x1
+    assert int(dut.gpio_write_en.value) & 0x1
+    await issue_instruction(dut, 26)
+    await issue_instruction(dut, 8)
+    assert int(dut.gpio_out.value) & 0x8
+    assert int(dut.gpio_write_en.value) & 0x8
+
+    # 9 and 12: first and last IO-mode toggles.
+    await issue_instruction(dut, 9)
+    await issue_instruction(dut, 12)
+    assert int(dut.gpio_mode.value) == 0x9
+
+    # 13 toggles the level used by wait-for.
+    await issue_instruction(dut, 13)
+    assert int(dut.wait_for_value.value) == 1
+    dut.gpio_in.value = 0
+    await issue_instruction(dut, 1)
+    assert int(dut.setup_complete.value) == 1
+    dut.gpio_in.value = 1
+    await step(dut)
+    assert int(dut.state.value) == 0
+
+    # 14 toggles shift direction; in this direction the selected IO shifts in.
+    await issue_instruction(dut, 14)
+    dut.gpio_in.value = 0x4
+    await issue_instruction(dut, 7)
+    assert int(dut.shift_reg.value) & 1
+    await issue_instruction(dut, 14)
+
+    # 15 and 25: first and last counter-bit toggles.
+    await issue_instruction(dut, 15)
+    await issue_instruction(dut, 25)
+    assert int(dut.timer_wait_cycles.value) == (1 | (1 << 10))
+
+    # 26 and 27: shift constants into the register.
+    await issue_instruction(dut, 27)
+    assert int(dut.shift_reg.value) & 1 == 0
+    await issue_instruction(dut, 26)
+    assert int(dut.shift_reg.value) & 1 == 1
+
+    # 28 and 31: first and last jump targets.
+    await issue_instruction(dut, 28)
+    assert int(dut.PC.value) == 0
+    await issue_instruction(dut, 31)
+    assert int(dut.PC.value) == 96
+
+
+@cocotb.test()
+async def test_wait_for_io_and_counter_toggles(dut):
+    await reset(dut)
+
+    # Toggle counter bits 0 and 4 to configure a wait of 17 ticks.
+    await issue_instruction(dut, 15)
+    await issue_instruction(dut, 19)
     assert int(dut.timer_wait_cycles.value) == 0x11
 
-    # Value 3 waits for IO2 to become low.
+    # IO2 waits for its low level.
     dut.gpio_in.value = 0x04
     await issue_instruction(dut, 3)
     assert int(dut.PC.value) == 3
@@ -66,40 +123,19 @@ async def test_wait_instructions_and_timer_counter(dut):
     assert int(dut.setup_complete.value) == 0
     assert int(dut.PC.value) == 3
 
-    # Value 11 waits for IO2 to become high.
-    await issue_instruction(dut, 11)
+    # Toggle the desired level high, then wait for IO2 to become high.
+    await issue_instruction(dut, 13)
+    await issue_instruction(dut, 3)
     assert int(dut.setup_complete.value) == 1
     dut.gpio_in.value = 0x04
     await step(dut)
     assert int(dut.setup_complete.value) == 0
-    assert int(dut.PC.value) == 4
-
-    await issue_instruction(dut, 0)  # Wait for the configured timer.
-    assert int(dut.start_timer.value) == 1
-    await step(dut)
-    assert int(dut.timer_inst.count.value) == 0x11
-
-    for _ in range(20):
-        await step(dut)
-        if int(dut.state.value) == 0:
-            break
-    assert int(dut.state.value) == 0
     assert int(dut.PC.value) == 5
 
-
-@cocotb.test()
-async def test_io_mode_and_counter_toggle_ranges(dut):
-    await reset(dut)
-
-    await issue_instruction(dut, 40)  # Toggle IO7 mode.
-    assert int(dut.gpio_mode.value) == 0x80
-    await issue_instruction(dut, 40)
-    assert int(dut.gpio_mode.value) == 0
-
-    await issue_instruction(dut, 57)  # Toggle timer counter bit 16.
-    assert int(dut.timer_wait_cycles.value) == 1 << 16
-    await issue_instruction(dut, 57)
-    assert int(dut.timer_wait_cycles.value) == 0
+    # Timer instruction waits for the configured duration.
+    await issue_instruction(dut, 0)
+    await wait_for_fetch(dut)
+    assert int(dut.PC.value) == 6
 
 
 @cocotb.test()
@@ -107,8 +143,8 @@ async def test_jumps_select_four_equal_memory_sections(dut):
     await reset(dut)
 
     for section in range(4):
-        await issue_instruction(dut, 60 + section)
-        assert int(dut.PC.value) == section * 64
+        await issue_instruction(dut, 28 + section)
+        assert int(dut.PC.value) == section * 32
 
 
 @cocotb.test()
@@ -150,7 +186,7 @@ async def test_programming_mode_pauses_timer_countdown(dut):
     assert int(dut.PC.value) == 1
 
     dut.programming_mode.value = 0
-    for _ in range(8):
+    for _ in range(10):
         await step(dut)
         if int(dut.state.value) == 0:
             break

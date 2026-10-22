@@ -5,10 +5,10 @@ from cocotb.triggers import RisingEdge, FallingEdge, ReadOnly, Timer
 
 SCLK, MOSI, MISO, CS = 0, 1, 2, 3   #pin assignments
 
-#instr encodings: [7:6] opcode, [5:1] index, [0] value bit 
-def shift_in_const(v): return 0x40 | ((9 if v else 8) << 1) # push const 0 or 1 into shift_reg
-def shift_out(pin):    return 0x40 | (pin << 1) | 1 # send shift_reg's lowest bit to pin
-def jump(block):       return 0xC0 | block  #PC = block *4
+# Flat 5-bit instruction encodings.
+def shift_in_const(v): return 26 if v else 27
+def shift_out(pin):    return 5 + pin
+def jump(section):     return 28 + section
 
 #produces 2 instr bytes and adds them to program list
 def set_pin(pin, value):
@@ -17,9 +17,11 @@ def set_pin(pin, value):
 
 #stops the program safely at the end, makes processor loop on one instr forever
 def park(program):
-    while len(program) % 4: #pad to a multiple of 4
-        program.append(shift_in_const(0)) # push 0 for any left over
-    program.append(jump(len(program) // 4))
+    # Jump to section 1, whose first instruction loops to itself.
+    program.append(jump(1))
+    while len(program) < 64:
+        program.append(jump(1))
+    program.append(jump(1))
     return program
 
 def spi_start_program():
@@ -39,7 +41,7 @@ async def run_memory(dut, program):
         dut.mem_data_in.value = program[addr] if addr < len(program) else 0
         
 async def start_processor(dut, program):
-    cocotb.start_soon(Clock(dut.clk, 10, unit ="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 20, unit ="ns").start())
     dut.rst_n.value = 0
     dut.programming_mode.value = 0
     dut.gpio_in.value = 0

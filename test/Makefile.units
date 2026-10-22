@@ -13,6 +13,9 @@ endif
 ifeq ($(UNIT),io_port)
 VERILOG_SOURCES += $(PWD)/tb_io_port.v
 endif
+ifeq ($(UNIT),timer)
+VERILOG_SOURCES += $(PWD)/tb_timer.v
+endif
 SIM_BUILD := sim_build/units/$(UNIT)
 TOPLEVEL := $(UNIT)
 COCOTB_TEST_MODULES := test_$(UNIT)
@@ -21,6 +24,9 @@ TOPLEVEL := programmer
 endif
 ifeq ($(UNIT),io_port)
 TOPLEVEL := tb_io_port
+endif
+ifeq ($(UNIT),timer)
+TOPLEVEL := tb_timer
 endif
 COMPILE_ARGS += -g2012
 

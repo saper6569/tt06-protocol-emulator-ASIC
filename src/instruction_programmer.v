@@ -1,11 +1,11 @@
 module programmer #(
-    parameter INSTRUCTION_WIDTH = 6,
+    parameter INSTRUCTION_WIDTH = 5,
     parameter ADDRESS_WIDTH = 8
 )(
     input wire clk,
     input wire rst_n,
 
-    // Serially receives the address followed by a 6-bit instruction, MSB first.
+    // Serially receives the address followed by an instruction, MSB first.
     input wire program_data,
     input wire program_en,
 
@@ -17,6 +17,8 @@ module programmer #(
 
     localparam TOTAL_WIDTH = ADDRESS_WIDTH + INSTRUCTION_WIDTH;
     localparam COUNT_WIDTH = $clog2(TOTAL_WIDTH + 1);
+    localparam [COUNT_WIDTH-1:0] TOTAL_WIDTH_COUNT =
+        COUNT_WIDTH'(TOTAL_WIDTH);
 
     // Shift register
     reg [TOTAL_WIDTH-1:0] shift_reg;
@@ -47,7 +49,7 @@ module programmer #(
             // Receive programming data
             if (program_en) begin
                 // Shift in one bit
-                if (bit_count < TOTAL_WIDTH) begin
+                if (bit_count < TOTAL_WIDTH_COUNT) begin
                     shift_reg <= {
                         shift_reg[TOTAL_WIDTH-2:0],
                         program_data
@@ -59,7 +61,7 @@ module programmer #(
             // program_en has just gone low
             if (prev_program_en && !program_en) begin
                 // Check that exactly one complete word was received
-                if (bit_count == TOTAL_WIDTH) begin
+                if (bit_count == TOTAL_WIDTH_COUNT) begin
                     data_reg <= shift_reg;
                     write_en <= 1'b1;
                 end

@@ -1,14 +1,13 @@
-# Tiny Tapeout project information
-project:
+# Tiny Tapeout project information project:
   title:        "Protocol Emulator"
   author:       "Sanija, Aiden, Aaron"
   discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
   description:  "A serially programmed processor for GPIO protocol emulation."
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
+  clock_hz:     50000000 # Clock frequency in Hz
 
   # How many tiles your design occupies? A single tile is about 167x108 uM.
-  tiles: "4x2"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
+  tiles: "2x2"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
 
   # Your top module name must start with "tt_um_". Make it unique by including your github username:
   top_module:  "tt_um_example"
@@ -52,10 +51,10 @@ pinout:
   uio[1]: "GPIO 1"
   uio[2]: "GPIO 2"
   uio[3]: "GPIO 3"
-  uio[4]: "GPIO 4"
-  uio[5]: "GPIO 5"
-  uio[6]: "GPIO 6"
-  uio[7]: "GPIO 7"
+  uio[4]: "Unused"
+  uio[5]: "Unused"
+  uio[6]: "Unused"
+  uio[7]: "Unused"
 
 # Do not change!
 yaml_version: 6

@@ -5,10 +5,14 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
 
+INSTRUCTION_WIDTH = 5
+INSTRUCTION_MEMORY_ADDR_WIDTH = 7
+PROGRAM_WORD_WIDTH = INSTRUCTION_WIDTH + INSTRUCTION_MEMORY_ADDR_WIDTH
+
 
 @cocotb.test()
 async def test_serial_program_and_run(dut):
-    clock = Clock(dut.clk, 10, unit="ns")
+    clock = Clock(dut.clk, 20, unit="ns")
     cocotb.start_soon(clock.start())
 
     dut.ena.value = 1
@@ -23,7 +27,7 @@ async def test_serial_program_and_run(dut):
     # Program address 0 with wait-for-low on GPIO 0 (instruction value 1).
     word = 0x0001
     dut.ui_in.value = 0x80
-    for bit in range(13, -1, -1):
+    for bit in range(PROGRAM_WORD_WIDTH - 1, -1, -1):
         dut.ui_in.value = 0x80 | ((word >> bit) & 1) << 6
         await RisingEdge(dut.clk)
     dut.ui_in.value = 0

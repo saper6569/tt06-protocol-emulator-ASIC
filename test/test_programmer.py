@@ -3,7 +3,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, Timer
 
 ADDRESS_WIDTH = 8
-INSTRUCTION_WIDTH = 6
+INSTRUCTION_WIDTH = 5
 WORD_WIDTH = ADDRESS_WIDTH + INSTRUCTION_WIDTH
 
 
@@ -32,12 +32,12 @@ async def test_programs_address_and_instruction_msb_first(dut):
     cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset(dut)
 
-    # Address 0xA5 followed by instruction 0x2C.
-    word = (0xA5 << INSTRUCTION_WIDTH) | 0x2C
+    # Address 0xA5 followed by instruction 0x0C.
+    word = (0xA5 << INSTRUCTION_WIDTH) | 0x0C
     await send_bits(dut, word, WORD_WIDTH)
 
     assert int(dut.address_out.value) == 0xA5
-    assert int(dut.instruction_out.value) == 0x2C
+    assert int(dut.instruction_out.value) == 0x0C
     assert int(dut.write_en.value) == 1
     await FallingEdge(dut.clk)
     assert int(dut.write_en.value) == 0
@@ -53,10 +53,10 @@ async def test_incomplete_word_is_discarded(dut):
     assert int(dut.address_out.value) == 0
     assert int(dut.instruction_out.value) == 0
 
-    word = (0x12 << INSTRUCTION_WIDTH) | 0x34
+    word = (0x12 << INSTRUCTION_WIDTH) | 0x14
     await send_bits(dut, word, WORD_WIDTH)
     assert int(dut.address_out.value) == 0x12
-    assert int(dut.instruction_out.value) == 0x34
+    assert int(dut.instruction_out.value) == 0x14
     assert int(dut.write_en.value) == 1
 
 
@@ -66,11 +66,11 @@ async def test_extra_bits_do_not_corrupt_word(dut):
     await reset(dut)
 
     dut.program_en.value = 1
-    word = (0xBE << INSTRUCTION_WIDTH) | 0x2F
+    word = (0xBE << INSTRUCTION_WIDTH) | 0x1F
     for bit in range(WORD_WIDTH - 1, -1, -1):
         dut.program_data.value = (word >> bit) & 1
         await FallingEdge(dut.clk)
-    # The programmer accepts one 14-bit word per enable pulse.
+    # The programmer accepts one 13-bit word per enable pulse.
     for bit in (1, 0, 1, 0):
         dut.program_data.value = bit
         await FallingEdge(dut.clk)
@@ -79,5 +79,5 @@ async def test_extra_bits_do_not_corrupt_word(dut):
     await Timer(1, unit="ns")
 
     assert int(dut.address_out.value) == 0xBE
-    assert int(dut.instruction_out.value) == 0x2F
+    assert int(dut.instruction_out.value) == 0x1F
     assert int(dut.write_en.value) == 1
