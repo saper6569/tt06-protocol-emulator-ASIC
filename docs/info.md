@@ -88,3 +88,8 @@ Run a standalone building-block test with
 ## External hardware
 
 No external hardware is required.
+
+## ASIC process
+
+The Tiny Tapeout ASIC flow targets IHP SG13CMOS5L, exposed by the flow as the
+`ihp-sg13g2` PDK platform.
