@@ -1,0 +1,14 @@
+// Instruction list for the programmer FPGA. Recompile after editing.
+//
+// One 8-bit instruction per line, in binary, starting at address 0. Text after
+// // is a comment. @ sets the address of the next line, in hex. Jumps land on
+// multiples of 4, so @20 is the target of 11001000. Addresses not listed are
+// sent as 00000000.
+//
+// This example puts a square wave on GPIO[0] with a 300 ns period.
+
+01010010  // 00: shift in 1
+01000001  // 01: shift out to GPIO[0]
+01010000  // 02: shift in 0
+01000001  // 03: shift out to GPIO[0]
+11000000  // 04: jump to address 0

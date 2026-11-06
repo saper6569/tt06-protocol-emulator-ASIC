@@ -12,3 +12,10 @@ test/__pycache__/
 test/results.xml
 test/gate_level_netlist.v
 .github/copilot-instructions.md
+fpga/quartus/db
+fpga/quartus/incremental_db
+fpga/quartus/output_files
+fpga/sim/work
+fpga/sim/transcript
+fpga/sim/vsim.wlf
+fpga/quartus/c5_pin_model_dump.txt
