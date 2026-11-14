@@ -8,5 +8,16 @@ Architecture:
     -Sense Amplifier
     -Write Driver
     -Control Logic
+    
+Dependancies
+    - git 
+    - make
+    - nix     (placement and routing)
+    - everything in requirements.txt
 
-
+OpenRam compiler
+                         ~->spice schematics
+                        /
+Python src --> compiler
+                        \
+                         ~->GDSII layouts

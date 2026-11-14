@@ -2,25 +2,25 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <sstream>
 
-enum operandType{
-    address,
-    immediate,
-    complileImmediate,
-    controlBit
-};
-
-struct Operand{
-    operandType type;
-    int value;
-};
-struct Instruction{
-    std::string mnemonic;
+class Instruction {
+public:
+    operandMnemonic mnemonic;
     std::vector<Operand> operands;
     int address;
-};
 
-Instruction parseInstruction(const std::string& line);
+    //turns string into operand
+    void mnemonicfromStr(std::string str){
+        if(str == "wait")
+        if(str == "shift")
+            mnemonic = shift;
+        if(str == "setBit")SW
+            inst.mnemonic = setBit;
+        if(operandMnemonic == "wait")
+            inst.mnemonic = blank;
+
+std::string trimWhiteSpace(std::string in);
 
         
     
@@ -42,48 +42,43 @@ int main(int argc, char * argv[]) {
         return 1;
     }
 
-    std::ifstream file(argv[1]);
-        
-    if(!file.is_open()) {
-        std::cerr << "Could not open file:" << argv[1] << "\n";
-        return 1;
-    }
-
-    std::string line;
-    std::vector<Instruction> Instructions;
-    while (std::getline(file, line)) {
-        Instruction currInstr;
-        
-        
-        std::cout << line;
-    }
 
 }
 Instruction parseInstruction(const std::string& line){ 
 	Instruction inst;
-	std::istringstream iss(line);
+    std::istringstream iss(line);
+    std::string operandMnemonic;
+    iss >> operandMnemonic;
 
-	iss >> inst.mnemonic;
+    std::cout << operandMnemonic << "/n";
+
+    
 	
-	std::string remaining;
-	std::getline(iss, remaining);
 
-	std::istring operandStream(remaining);
-	std::string operand;
 
-	while(std::getline(operandString, operand, ','){
-		size_t start = operand.find_first_not_of(" \t");
+	while(std::getline(operandStream, operandMnemonic, ',')){
+        operandMnemonic = trimWhiteSpace(operandMnemonic);
 
-		if(start == std::string::npos){
-			continue;
-		}
 
-		operand.erase(0, start);
-
-		size_t end = operand.find_last_not_of(" /t");
-		operand.erase(end + 1);
-
-		inst.operands.push_back(operand);
+		inst.operands.push_back(operandMnemonic);
 	}
 	return inst;
 }
+Operand parseOperand(std::string operandString){
+    Operand op;
+}
+
+std::string trimWhiteSpace(std::string in) {
+		size_t start = in.find_first_not_of(" \t");
+
+		if(start == std::string::npos){
+		    return in;	
+		}
+
+		in.erase(0, start);
+
+		size_t end = in.find_last_not_of(" /t");
+		in.erase(end + 1);
+        return in;
+}
+
