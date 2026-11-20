@@ -1,0 +1,6 @@
+
+State Machine - |processor_fpga_top|tt_um_example:core|processor:processor_inst|state
+Name state.FETCH_INSTRUCTION state.EXECUTE_INSTRUCTION state.CAPTURE_INSTRUCTION 
+state.FETCH_INSTRUCTION 0 0 0 
+state.CAPTURE_INSTRUCTION 1 0 1 
+state.EXECUTE_INSTRUCTION 1 1 0 

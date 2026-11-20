@@ -39,9 +39,6 @@
  *   prog_ok releases every processor whose PROGRAM frame has finished. It
  *   never releases one whose frame is still in progress.
  *
- * CRC-8: polynomial x^8 + x^2 + x + 1 (0x07), init 0x00, MSB first, no final
- * XOR (the common "CRC-8/SMBUS"). Check value: "123456789" -> 0xF4.
- *
  * ---------------------------------------------------------------------------
  * Timing
  * ---------------------------------------------------------------------------
@@ -52,13 +49,6 @@
  * needs. Nothing here ever clears or reads the memory.
  *
  * ---------------------------------------------------------------------------
- * Between frames
- * ---------------------------------------------------------------------------
- * When no frame bit is being processed (cs_n high, or spi_rx_serial not yet
- * armed after reset), bit_valid is low and the parser returns to S_CMD. A
- * partial last byte is dropped. enable and prog_hold are left alone.
- *
- * ---------------------------------------------------------------------------
  * States
  * ---------------------------------------------------------------------------
  *   S_CMD   wait for the command byte, then decode it
@@ -67,43 +57,56 @@
  *   S_DATA  DATA: forward every bit until the frame ends
  *   S_SKIP  RUN / IDLE: already done; ignore the rest of the frame
  *
- *          !bit_valid (between frames) from any state
- *   +----------------------------------------------------+
- *   v                                                    |
- * S_CMD --RUN/IDLE--> S_SKIP                             |
- *   |   --PROGRAM---> S_ADDR --byte--> S_INSTR --+       |
- *   |                                    ^       | byte: write, addr + 1
- *   |                                    +-------+       |
- *   +---- DATA -----> S_DATA (each bit -> data_bit) -----+
+ * ---------------------------------------------------------------------------
+ * WORKED EXAMPLE: programming processor 2 with two instructions at address 0x10
+ * ---------------------------------------------------------------------------
+ * The master pulls cs_n low and sends these 5 bytes, then raises cs_n:
+ *
+ *   byte 0: 0x60   = 01 10 0000  -> mode = PROGRAM (01), id = 2 (10)
+ *   byte 1: 0x10   start address
+ *   byte 2: 0xAA   instruction  -> written to mem[2][0x10]
+ *   byte 3: 0xBB   instruction  -> written to mem[2][0x11]
+ *   (cs_n goes high)
+ *
+ * What the dispatcher does:
+ *   byte 0 : state S_CMD  -> prog_hold[2] = 1, crc started, state = S_ADDR
+ *   byte 1 : state S_ADDR -> waddr = 0x10, state = S_INSTR
+ *   byte 2 : state S_INSTR-> mem_addr=0x10, mem_wdata=0xAA, mem_we=0100 (1 cycle)
+ *   byte 3 : state S_INSTR-> mem_addr=0x11, mem_wdata=0xBB, mem_we=0100 (1 cycle)
+ *   cs_n high: state -> S_CMD, crc_valid pulses once with crc_id=2.
+ *   The master checks the CRC it received over TX, and pulses prog_ok
+ *   -> prog_hold[2] drops, processor 2 starts from address 0.
+ *
+ * Another example, a RUN frame for processor 3: one byte 0x30 = 00 11 0000
+ * (mode RUN, id 3) -> enable[3] = 1. Nothing else is needed.
  */
 
 module spi_rx_dispatch (
     input wire clk,
-    input wire rst_n,      // synchronous, active low
+    input wire rst_n, // synchronous, active low
 
-    // ---- From spi_rx_serial (combinational, for the bit being processed) ----
-    input wire bit_valid,        // 1: a frame bit is being processed this cycle
-    input wire bit_data,         // that bit
-    input wire byte_valid,       // 1: that bit is the 8th of a byte
-    input wire [7:0] byte_data,  // the completed byte; only meaningful with byte_valid
+    // From spi_rx_serial
+    input wire bit_valid, // 1: a frame bit is being processed this cycle
+    input wire bit_data,
+    input wire byte_valid,  // 1: that bit is the 8th of a byte
+    input wire [7:0] byte_data, // the completed byte; only meaningful with byte_valid
 
-    // ---- From the master ----
-    input wire prog_ok,          // pin: PROGRAM CRC matched, release held processors
+    // From the master
+    input wire prog_ok, // pin: PROGRAM CRC matched, release held processors
 
-    // ---- To the processors ----
-    // One bit per processor (bit i = processor i) unless noted.
-    output reg [3:0] enable,     // 1 = run, 0 = idle. Set by RUN, cleared by IDLE.
-    output reg [3:0] mem_we,     // one-cycle write strobe for that instruction memory
-    output reg [7:0] mem_addr,   // shared by all memories; valid while a mem_we bit is high
-    output reg [7:0] mem_wdata,  // shared by all memories; valid while a mem_we bit is high
-    output reg data_bit,         // shared serial data; valid while a data_valid bit is high
-    output reg [3:0] data_valid, // one-cycle strobe: data_bit is for that processor
-    output reg [3:0] prog_hold,  // hold that processor in reset; its memory port is ours
+    // To the processors, has one hot data for total 4 processors
+    output reg [3:0] enable,  // 1 = run, 0 = idle. Set by RUN, cleared by IDLE.
+    output reg [3:0] mem_we,  // one-cycle write strobe for instruction memory
+    output reg [7:0] mem_addr,  // shared by all memories; valid while a mem_we bit is high
+    output reg [7:0] mem_wdata, // shared by all memories; valid while a mem_we bit is high
+    output reg data_bit,  // shared serial data; valid while a data_valid bit is high
+    output reg [3:0] data_valid,  // one-cycle strobe
+    output reg [3:0] prog_hold, // hold that processor in reset
 
-    // ---- To spi_tx (status word back to the master) ----
-    output reg crc_valid,        // one-cycle pulse at the end of each PROGRAM frame
-    output wire [1:0] crc_id,    // processor that frame was for
-    output wire [7:0] crc_value  // CRC-8 of the frame's complete bytes
+    // To spi_tx (status word back to the master)
+    output reg crc_valid, // one-cycle pulse at the end of each PROGRAM frame
+    output wire [1:0] crc_id, // processor that frame was for
+    output wire [7:0] crc_value // CRC-8 of the frame's complete bytes
 );
     // Mode field, command byte bits [7:6].
     localparam [1:0] MODE_RUN = 2'b00,
@@ -118,12 +121,12 @@ module spi_rx_dispatch (
                      S_DATA = 3'd3,
                      S_SKIP = 3'd4;
 
+    // Current state of the parser
     reg [2:0] state;
 
     // Processor selected by this frame's command byte. Captured once, at the
-    // command byte, and used by every later byte of the frame. It isn't
-    // cleared between frames because the next command byte always overwrites
-    // it before it's used again.
+    // command byte, and used by every later byte of the frame. Every command
+    // byte overwrites it, so it needs no clearing between frames. 
     reg [1:0] id;
 
     // Address the next PROGRAM instruction byte goes to. Loaded from the
@@ -133,43 +136,35 @@ module spi_rx_dispatch (
     // Running CRC-8 of the current PROGRAM frame.
     reg [7:0] crc;
 
-    // prog_ok is a pin: register it like the other RX inputs, so it only has
-    // a pin -> flop path. Not reset, for the same reason as in spi_rx_serial.
+    // prog_ok is a pin
     reg prog_ok_q;
     always @(posedge clk) prog_ok_q <= prog_ok;
 
     // Command byte fields. These are only meaningful in S_CMD with byte_valid
     // high, when byte_data is the command byte. Bits [3:0] are reserved and
     // ignored.
+    // Example: byte_data = 8'b01_10_0000 -> cmd_mode = 01 (PROGRAM), cmd_id = 10 (2).
+    // "byte_data[7:6]" means "bits 7 down to 6" (a slice of the vector).
     wire [1:0] cmd_mode = byte_data[7:6];
     wire [1:0] cmd_id = byte_data[5:4];
 
-    // One-hot versions of the processor ID, for the per-processor strobes:
-    // id 0 -> 4'b0001, id 1 -> 4'b0010, id 2 -> 4'b0100, id 3 -> 4'b1000.
-    //   id_onehot     uses the stored id, for bytes after the command byte.
-    //   cmd_id_onehot uses the ID in the command byte arriving right now. It's
-    //                 needed in S_CMD because id itself only updates at the end
-    //                 of this clock edge.
+    // One hot encodings
     wire [3:0] id_onehot = 4'b0001 << id;
     wire [3:0] cmd_id_onehot = 4'b0001 << cmd_id;
 
     // A PROGRAM frame is in progress (its command byte has been decoded).
     wire in_program = (state == S_ADDR) || (state == S_INSTR);
 
-    // The CRC report reads the registers directly. They only change at the
-    // next frame's command byte, at least 9 cycles after crc_valid, and spi_tx
-    // captures them on the crc_valid cycle.
+    // The CRC report values
     assign crc_id = id;
     assign crc_value = crc;
 
-    // One byte of CRC-8 (poly 0x07, MSB first): the CRC after `data` is
-    // appended to a message whose CRC so far is `c`. Unrolled by synthesis into
-    // a small XOR network.
+    // Turns any sequence of bytes into a single 8-bit for error checking
     function [7:0] crc8_byte;
-        input [7:0] c;
-        input [7:0] data;
-        integer k;
-        reg [7:0] x;
+        input [7:0] c; 
+        input [7:0] data; 
+        integer k;  
+        reg [7:0] x; 
         begin
             x = c ^ data;
             for (k = 0; k < 8; k = k + 1)
@@ -178,11 +173,9 @@ module spi_rx_dispatch (
         end
     endfunction
 
+    // Main state machine
     always @(posedge clk) begin
         if (!rst_n) begin
-            // ---- Reset: everything off, wait for a command byte ----
-            // This is the only place besides IDLE that clears enable. It also
-            // releases every held processor (enable is 0, so none of them run).
             state <= S_CMD;
             id <= 2'd0;
             waddr <= 8'd0;
@@ -196,42 +189,33 @@ module spi_rx_dispatch (
             prog_hold <= 4'b0000;
             crc_valid <= 1'b0;
         end else begin
-            // ---- Strobe defaults ----
-            // These are pulses: cleared on every edge, and set below only on
-            // the single edge where the event happens. That makes each one high
-            // for exactly one cycle without needing its own counter.
-            // (Nonblocking assignments: a later assignment in this block wins.)
+            // These are pulses, so reseting them here allows 1 cycle high
             mem_we <= 4'b0000;
             data_valid <= 4'b0000;
             crc_valid <= 1'b0;
 
-            // ---- Master confirmed the CRC(s) ----
-            // Release every held processor whose PROGRAM frame is finished. If
-            // a PROGRAM frame is in progress right now, keep its processor held.
-            // If a new PROGRAM command arrives on this same edge, the case
-            // statement below sets its bit again, and that later assignment wins.
+            // prog_ok releases all held processors, except one whose PROGRAM
+            // frame is still arriving (incomplete, CRC not yet checked). 
             if (prog_ok_q)
                 prog_hold <= in_program ? (prog_hold & id_onehot) : 4'b0000;
 
             if (!bit_valid) begin
-                // ---- Between frames (cs_n high, or not armed after reset) ----
+                // Between frames (cs_n high, or not armed after reset)
                 // Go back to waiting for a command byte. A partial last byte is
                 // dropped, because it never raised byte_valid.
                 state <= S_CMD;
 
-                // A PROGRAM frame just ended (this is the first cycle after
-                // it, since state leaves S_ADDR/S_INSTR right here): report its
-                // CRC to the master. prog_hold stays high until prog_ok.
+                // A PROGRAM frame just ended so pulse crc_valid
                 if (in_program)
                     crc_valid <= 1'b1;
             end else begin
-                // ---- A frame bit is being processed ----
+                // A frame bit is being processed
                 case (state)
                     // Waiting for the command byte. Bits 1..7 just shift in
                     // inside spi_rx_serial; on the 8th (byte_valid) the whole
                     // byte is available and gets decoded here.
                     S_CMD: if (byte_valid) begin
-                        // Remember which processor this frame is for.
+                        // Remember which processor this frame is for. Later
                         id <= cmd_id;
                         case (cmd_mode)
                             // RUN: start the processor now. If it's held for
@@ -251,10 +235,14 @@ module spi_rx_dispatch (
 
                             // PROGRAM: hold the processor in reset until the
                             // master confirms, so it never runs a half-loaded
-                            // or corrupted program. Start a fresh CRC with the
-                            // command byte itself.
+                            // or corrupted program. Start a new CRC with the
+                            // command byte itself
                             MODE_PROG: begin
+                                // hold current processor.
                                 prog_hold[cmd_id] <= 1'b1;
+                                // CRC restarts from 0x00 and includes this
+                                // command byte, so the CRC covers the whole
+                                // frame (command, address, instructions).
                                 crc <= crc8_byte(8'h00, byte_data);
                                 state <= S_ADDR;
                             end
@@ -277,25 +265,23 @@ module spi_rx_dispatch (
                     // together for one cycle. The memory writes on the next
                     // edge. Then move to the next address and stay here.
                     S_INSTR: if (byte_valid) begin
-                        mem_addr <= waddr;
-                        mem_wdata <= byte_data;
-                        mem_we <= id_onehot;
-                        waddr <= waddr + 8'd1;
-                        crc <= crc8_byte(crc, byte_data);
+                        mem_addr <= waddr;  // where to write
+                        mem_wdata <= byte_data; // what to write
+                        mem_we <= id_onehot;  // Strobes since defaults to 0
+                        waddr <= waddr + 8'd1;  // next instruction goes one address up
+                        crc <= crc8_byte(crc, byte_data); // Set new crc
                     end
 
                     // DATA: no byte grouping. Every bit passes straight through
-                    // with a one-cycle valid strobe for the selected processor
-                    // only. Stay here until cs_n goes high.
+                    // with a one-cycle valid strobe for the selected processor.
                     S_DATA: begin
-                        data_bit <= bit_data;
+                        data_bit <= bit_data; // the raw bit from the serial stage
                         data_valid <= id_onehot;
                     end
 
                     // S_SKIP (and any unused state encoding): RUN/IDLE has
                     // already been applied; ignore everything else in this
-                    // frame. The !bit_valid branch above brings us back to
-                    // S_CMD when cs_n goes high.
+                    // frame.
                     default: ;
                 endcase
             end

@@ -46,7 +46,7 @@ module processor #(
         instruction_index[TIMER_INDEX_BITS-1:0];
     // Bit-set indices enumerate timer_wait_cycles first, then gpio_mode.
     wire [GPIO_INDEX_BITS-1:0] gpio_mode_index =
-        instruction_index[GPIO_INDEX_BITS-1:0] - GPIO_INDEX_BITS'(WAIT_CYCLES_WIDTH);
+        instruction_index[GPIO_INDEX_BITS-1:0] - WAIT_CYCLES_WIDTH;
 
     // Wait instructions hold EXECUTE until their condition is satisfied.
     reg setup_complete;
