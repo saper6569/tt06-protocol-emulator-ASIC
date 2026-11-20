@@ -7,10 +7,12 @@ enum OperandType{
     GPIO_loc,
     bit,
     bit_loc,
+    timer_loc,
     addr,
 };
-enum OperandMnemonic{
-    wait,
+enum Mnemonic{
+    waitVal,
+    waitTimer,
     shift,
     setBit,
     jmp,
@@ -21,7 +23,7 @@ struct Operand{
     int value;
 };
 struct Instr{
-    OperandMnemonic mnemonic;
+    Mnemonic mnemonic;
     std::vector<Operand> operands;
     int fileAddress;
 };
