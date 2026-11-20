@@ -7,13 +7,14 @@ enum OperandType{
     GPIO_loc,
     bit,
     bit_loc,
-    addr  
+    addr,
 };
 enum OperandMnemonic{
     wait,
     shift,
     setBit,
-    jmp
+    jmp,
+    Wait_timer
 };
 struct Operand{
     OperandType type;

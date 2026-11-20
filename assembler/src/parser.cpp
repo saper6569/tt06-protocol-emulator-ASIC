@@ -49,16 +49,35 @@ private:
     }
     tt06::Operand parseOperand (std::string raw_operand, tt06::OperandType expectedType){
         if(std::regex_match(raw_operand, getOperandRegex(expectedType))){
+            tt06::Operand out_OperandType;
             switch (expectedType){
                 case tt06::GPIO_loc:
+                    if(std::regex_match(raw_operand, std::regex(R"(gpio_[0-9])"))){
+                        out_OperandType.value = raw_operand.at(5) - '0'; 
+                        out_OperandType.type = tt06::GPIO_loc;
+                    }
+                    else if(std::regex_match(raw_operand, std::regex(R"(in_[0-9])"))){
+                        ;//
+                    }
+                    else if(std::regex_match(raw_operand, std::regex(R"(out_[0-9])"))){
+                        ;//
+                    }
+                    else
+                    ;//TODO: throw
                 case tt06::bit:
+                    if(std::regex_match(raw_operand, std::regex(R"([10])"))){
+                        out_OperandType.value = std::stoi(raw_operand);
+                    }
+                    else
+                    ;//TODO: throw
                 case tt06::bit_loc:
+                    if((std::regex_match(raw_operand, std::regex(R"(timer_)")
                 case tt06::addr:
                 default:
                     break;
             }
         }
-        else
+        else 
             ;        //TODO: throw 
     }
     std::regex getOperandRegex (tt06::OperandType type){
@@ -92,7 +111,9 @@ private:
         tt06::OperandMnemonic out;
         if(mnemonic == "wait")
             out = tt06::wait;
-        else if(mnemonic == "shift")
+        else if(mnemonic == "waitTIMER")
+            out = tt06::wait_TIMER;
+        else if(mnemonic == "shift") 
             out = tt06::shift;
         else if(mnemonic == "setBit")
             out = tt06::setBit;
